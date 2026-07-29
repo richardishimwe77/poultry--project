@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { comparePassword } from "@/lib/auth/password"
 import { signToken } from "@/lib/auth/jwt"
-import { findAdminByEmail } from "@/lib/supabase"
+import { getAdminEmail } from "@/lib/backend-api"
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,19 +11,29 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Email and password are required" }, { status: 400 })
     }
 
-    const admin = await findAdminByEmail(email)
-    if (!admin) {
+    // Check against presaved .env credentials
+    const validEmail = email === getAdminEmail()
+    const validPassword = await comparePassword(password)
+
+    if (!validEmail || !validPassword) {
       return NextResponse.json({ error: "Invalid email or password" }, { status: 401 })
     }
 
-    const valid = await comparePassword(password, (admin as any).password_hash)
-    if (!valid) {
-      return NextResponse.json({ error: "Invalid email or password" }, { status: 401 })
+    const token = signToken({
+      userId: "admin-1",
+      email: getAdminEmail(),
+      role: "admin",
+    })
+
+    const user = {
+      id: "admin-1",
+      email: getAdminEmail(),
+      name: "Admin",
+      role: "admin" as const,
+      is_verified: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     }
-
-    const token = signToken({ userId: admin.id, email: admin.email, role: admin.role })
-
-    const { password_hash: _, ...user } = admin as any
 
     const response = NextResponse.json({ user, token })
     response.cookies.set("token", token, {

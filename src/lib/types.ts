@@ -8,7 +8,7 @@ export interface House {
   updated_at: string
 }
 
-// ---- Admin ----
+// ---- Admin (simplified — no verification tokens, no SMTP) ----
 export interface Admin {
   id: string
   email: string
@@ -19,19 +19,7 @@ export interface Admin {
   updated_at: string
 }
 
-export interface AdminInput {
-  email: string
-  password?: string
-  password_hash?: string
-  name?: string
-  role?: "admin" | "superadmin"
-  is_verified?: boolean
-  verification_token?: string
-  reset_token?: string
-  reset_token_expires?: string
-}
-
-// ---- Sensor Readings ----
+// ---- Sensor Readings (mapped from Express backend) ----
 export interface SensorReading {
   id: string
   house_id: string | null
@@ -43,35 +31,6 @@ export interface SensorReading {
   created_by: string | null
   created_at: string
   updated_at: string
-}
-
-export interface SensorReadingInput {
-  house_id?: string
-  temperature: number
-  humidity: number
-  air_quality: number
-  fan_status?: boolean
-  heater_status?: boolean
-  created_by?: string
-}
-
-// ---- Logs ----
-export interface LogEntry {
-  id: string
-  admin_id: string | null
-  house_id: string | null
-  message: string
-  type: "info" | "warning" | "error"
-  metadata?: Record<string, unknown>
-  created_at: string
-}
-
-export interface LogInput {
-  admin_id?: string
-  house_id?: string
-  message: string
-  type?: "info" | "warning" | "error"
-  metadata?: Record<string, unknown>
 }
 
 // ---- Chart / Filter ----
@@ -96,4 +55,23 @@ export interface AuthResponse {
   user: Omit<Admin, "password_hash"> | null
   token: string
   error?: string
+}
+
+// ---- Logs (simplified — no dedicated backend table) ----
+export interface LogEntry {
+  id: string
+  admin_id: string | null
+  house_id: string | null
+  message: string
+  type: "info" | "warning" | "error"
+  metadata?: Record<string, unknown>
+  created_at: string
+}
+
+export interface LogInput {
+  admin_id?: string
+  house_id?: string
+  message: string
+  type?: "info" | "warning" | "error"
+  metadata?: Record<string, unknown>
 }

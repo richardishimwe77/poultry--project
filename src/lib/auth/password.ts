@@ -1,11 +1,13 @@
-import bcrypt from "bcryptjs"
+// Simple password check against presaved .env credentials
+// No bcrypt needed — just compare against ADMIN_PASSWORD env var
 
-const SALT_ROUNDS = 12
+import { getAdminPassword } from "@/lib/backend-api"
 
-export async function hashPassword(password: string): Promise<string> {
-  return bcrypt.hash(password, SALT_ROUNDS)
+export async function comparePassword(password: string, _hash?: string): Promise<boolean> {
+  return password === getAdminPassword()
 }
 
-export async function comparePassword(password: string, hash: string): Promise<boolean> {
-  return bcrypt.compare(password, hash)
+// stub — unused but kept to avoid import errors
+export async function hashPassword(_password: string): Promise<string> {
+  return ""
 }

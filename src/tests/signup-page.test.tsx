@@ -6,26 +6,15 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn() }),
 }))
 
-vi.mock("@/context/AuthContext", () => ({
-  useAuth: () => ({
-    signup: vi.fn(),
-    user: null,
-    loading: false,
-  }),
-}))
-
 describe("SignupPage", () => {
-  it("renders create account form", () => {
+  it("shows sign-up disabled message", () => {
     render(<SignupPage />)
-    expect(screen.getAllByText("Create Account").length).toBeGreaterThanOrEqual(2)
-    expect(screen.getByPlaceholderText("John Doe")).toBeInTheDocument()
-    expect(screen.getByPlaceholderText("admin@example.com")).toBeInTheDocument()
-    expect(screen.getByPlaceholderText("At least 6 characters")).toBeInTheDocument()
-    expect(screen.getByRole("button", { name: /create account/i })).toBeInTheDocument()
-  })
-
-  it("has link to signin", () => {
-    render(<SignupPage />)
-    expect(screen.getByText("Sign In")).toBeInTheDocument()
+    expect(screen.getByText("Sign-up Disabled")).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        "New account registration is not available. Use the preconfigured admin credentials to sign in.",
+      ),
+    ).toBeInTheDocument()
+    expect(screen.getByText("Redirecting to sign in...")).toBeInTheDocument()
   })
 })
