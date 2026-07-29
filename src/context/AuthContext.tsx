@@ -2,6 +2,8 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react"
 import type { Admin } from "@/lib/types"
+import { fetchCurrentUser, loginRequest, logoutRequest } from "@/lib/api"
+import { clearStoredToken, setStoredToken } from "@/lib/auth-storage"
 
 interface AuthContextValue {
   user: Omit<Admin, "password_hash"> | null
@@ -18,41 +20,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch("/api/auth/me")
-      .then((res) => res.json())
+    fetchCurrentUser()
       .then((data) => {
         if (data.user) setUser(data.user)
       })
-      .catch(() => {})
+      .catch(() => {
+        clearStoredToken()
+        setUser(null)
+      })
       .finally(() => setLoading(false))
   }, [])
 
   const login = useCallback(async (email: string, password: string): Promise<string | null> => {
-    const res = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    })
-    const data = await res.json()
-    if (!res.ok) return data.error || "Login failed"
-    setUser(data.user)
-    return null
+    try {
+      const data = await loginRequest(email, password)
+      setStoredToken(data.token)
+      setUser(data.user)
+      return null
+    } catch (error) {
+      clearStoredToken()
+      setUser(null)
+      return error instanceof Error ? error.message : "Login failed"
+    }
   }, [])
 
-  const signup = useCallback(async (email: string, password: string, name?: string): Promise<string | null> => {
-    const res = await fetch("/api/auth/signup", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password, name }),
-    })
-    const data = await res.json()
-    if (!res.ok) return data.error || "Signup failed"
-    setUser(data.user)
-    return null
+  const signup = useCallback(async (_email: string, _password: string, _name?: string): Promise<string | null> => {
+    return "Sign-up is disabled. Use the preconfigured admin credentials."
   }, [])
 
   const logout = useCallback(async () => {
-    await fetch("/api/auth/logout", { method: "POST" })
+    try {
+      await logoutRequest()
+    } catch {}
+    clearStoredToken()
     setUser(null)
   }, [])
 

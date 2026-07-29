@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { Download, Printer, ArrowLeft, Warehouse, AlertTriangle, Info, AlertCircle } from "lucide-react"
 import type { LogEntry } from "@/lib/types"
+import { fetchLogs } from "@/lib/api"
 
 const iconMap = { info: Info, warning: AlertTriangle, error: AlertCircle }
 const badgeMap = {
@@ -19,8 +20,7 @@ export default function LogsReportPage() {
   const [filter, setFilter] = useState<string>("all")
 
   useEffect(() => {
-    fetch("/api/logs")
-      .then((r) => r.json())
+    fetchLogs()
       .then((data) => setLogs(Array.isArray(data) ? data : []))
       .catch(() => setLogs([]))
       .finally(() => setLoading(false))

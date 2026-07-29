@@ -7,6 +7,7 @@ import { FilterBar } from "@/components/FilterBar"
 import { StatisticsPanel } from "@/components/StatisticsPanel"
 import { SensorChart } from "@/components/SensorChart"
 import { FileText, Thermometer, Droplets, Wind } from "lucide-react"
+import { fetchHouses, fetchSensorReadings } from "@/lib/api"
 
 export default function GraphPage() {
   const [readings, setReadings] = useState<SensorReading[]>([])
@@ -21,8 +22,7 @@ export default function GraphPage() {
   const [activeTab, setActiveTab] = useState<"temperature" | "humidity" | "airQuality">("temperature")
 
   useEffect(() => {
-    fetch("/api/houses")
-      .then((r) => r.json())
+    fetchHouses()
       .then((data) => {
         if (Array.isArray(data)) {
           setHouses(data)
@@ -44,9 +44,7 @@ export default function GraphPage() {
           params.set("start", start)
           params.set("end", end)
         }
-        const res = await fetch(`/api/sensor-readings?${params}`)
-        if (!res.ok) throw new Error("Failed to fetch data")
-        const data: SensorReading[] = await res.json()
+        const data: SensorReading[] = await fetchSensorReadings(params)
         setReadings(data)
         setChartData(readingsToChartData(data))
       } catch (err) {
