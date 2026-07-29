@@ -8,6 +8,7 @@ import {
 import type { SensorReading, ChartDataPoint, House } from "@/lib/types"
 import { computeStats, readingsToChartData } from "@/lib/utils"
 import { Download, Printer, ArrowLeft, Warehouse } from "lucide-react"
+import { fetchHouses, fetchSensorReadings } from "@/lib/api"
 
 function GraphReportContent() {
   const searchParams = useSearchParams()
@@ -30,16 +31,14 @@ function GraphReportContent() {
         if (houseId) params.set("house_id", houseId)
         if (start && end) { params.set("start", start); params.set("end", end) }
 
-        const [res, housesRes] = await Promise.all([
-          fetch(`/api/sensor-readings?${params}`),
-          fetch("/api/houses"),
+        const [data, housesData] = await Promise.all([
+          fetchSensorReadings(params),
+          fetchHouses(),
         ])
 
-        const data: SensorReading[] = await res.json()
         setReadings(data)
         setChartData(readingsToChartData(data))
 
-        const housesData: House[] = await housesRes.json()
         if (houseId) setHouse(housesData.find((h: House) => h.id === houseId) || null)
       } catch {} finally {
         setLoading(false)

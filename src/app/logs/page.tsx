@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { AlertTriangle, Info, AlertCircle, Filter, FileText } from "lucide-react"
 import type { LogEntry } from "@/lib/types"
+import { fetchLogs } from "@/lib/api"
 
 const iconMap = {
   info: Info,
@@ -22,8 +23,7 @@ export default function LogsPage() {
   const [filter, setFilter] = useState<string>("all")
 
   useEffect(() => {
-    fetch("/api/logs")
-      .then((r) => r.json())
+    fetchLogs()
       .then((data) => setLogs(Array.isArray(data) ? data : []))
       .catch(() => setLogs([]))
       .finally(() => setLoading(false))
