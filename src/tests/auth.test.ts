@@ -1,17 +1,14 @@
-import { describe, it, expect } from "vitest"
-import { hashPassword, comparePassword } from "@/lib/auth/password"
+import { describe, it, expect, beforeAll } from "vitest"
+import { comparePassword } from "@/lib/auth/password"
 import { signToken, verifyToken } from "@/lib/auth/jwt"
 
 describe("password utils", () => {
-  it("hashes and compares passwords correctly", async () => {
-    const hash = await hashPassword("hello123")
-    expect(hash).not.toBe("hello123")
-    expect(hash.startsWith("$2")).toBe(true)
-
-    const match = await comparePassword("hello123", hash)
+  it("compares against the presaved .env password", async () => {
+    // Default password is "123" (fallback in backend-api.ts)
+    const match = await comparePassword("123")
     expect(match).toBe(true)
 
-    const noMatch = await comparePassword("wrong", hash)
+    const noMatch = await comparePassword("wrong-password")
     expect(noMatch).toBe(false)
   })
 })

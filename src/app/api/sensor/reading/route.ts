@@ -1,35 +1,24 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createSensorReading, createLog, fetchHouses } from "@/lib/supabase"
+import { postReading } from "@/lib/backend-api"
+
+// This route is used by the ESP32 to POST sensor readings.
+// Proxy straight to the Express backend.
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
 
-    let house_id = body.house_id || null
-
-    if (!house_id) {
-      const houses = await fetchHouses()
-      if (houses.length > 0) house_id = houses[0].id
-    }
-
-    const reading = await createSensorReading({
-      house_id,
+    await postReading({
       temperature: body.temperature,
       humidity: body.humidity,
-      air_quality: body.air_quality,
-      fan_status: body.fan_status ?? false,
-      heater_status: body.heater_status ?? false,
+      airQuality: body.airQuality ?? body.air_quality ?? 0,
     })
 
-    await createLog({
-      house_id,
-      message: `Sensor reading: ${body.temperature}°C, ${body.humidity}%, ${body.air_quality}PPM`,
-      type: "info",
-      metadata: { source: "esp32", reading_id: reading.id },
-    })
-
-    return NextResponse.json(reading, { status: 201 })
+    return NextResponse.json({ message: "Recorded data inserted successfully" }, { status: 201 })
   } catch (err: any) {
-    return NextResponse.json({ error: err.message || "Failed to save reading" }, { status: 500 })
+    return NextResponse.json(
+      { error: err.message || "Failed to save reading" },
+      { status: 500 },
+    )
   }
 }

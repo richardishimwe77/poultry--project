@@ -1,68 +1,99 @@
 import { NextRequest, NextResponse } from "next/server"
 import { authenticateRequest } from "@/lib/auth/middleware"
-import {
-  fetchSensorReadings,
-  createSensorReading,
-  deleteSensorReading,
-  updateSensorReading,
-} from "@/lib/supabase"
+import { fetchReadings, fetchControls } from "@/lib/backend-api"
 import { getDateRange } from "@/lib/date-utils"
+import type { FilterPeriod } from "@/lib/types"
+
+// Map Express backend data to the frontend SensorReading shape
+function mapReading(
+  r: { id: number; temperature: number; humidity: number; gaz: number; added_date: string },
+  fanState: boolean,
+  heaterState: boolean,
+) {
+  return {
+    id: String(r.id),
+    house_id: null as string | null,
+    temperature: r.temperature,
+    humidity: r.humidity,
+    air_quality: r.gaz,
+    fan_status: fanState,
+    heater_status: heaterState,
+    created_by: null as string | null,
+    created_at: r.added_date,
+    updated_at: r.added_date,
+  }
+}
 
 export async function GET(request: NextRequest) {
   const auth = authenticateRequest(request)
   if (!auth) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   const { searchParams } = new URL(request.url)
-  const filter = (searchParams.get("filter") as any) || "daily"
+  const filter = (searchParams.get("filter") as FilterPeriod) || "daily"
   const start = searchParams.get("start") || undefined
   const end = searchParams.get("end") || undefined
-  const houseId = searchParams.get("house_id") || undefined
+  const houseId = searchParams.get("house_id")
 
-  const { startDate, endDate } = getDateRange(filter, start, end)
-  const readings = await fetchSensorReadings(startDate, endDate, houseId)
-  return NextResponse.json(readings)
+  try {
+    const [readings, controls] = await Promise.all([
+      fetchReadings(),
+      fetchControls(),
+    ])
+
+    const fanState = controls.find((c) => c.gpio === "19")?.state === 1
+    const heaterState = controls.find((c) => c.gpio === "14")?.state === 1
+
+    const { startDate, endDate } = getDateRange(filter, start, end)
+
+    const mapped = readings
+      .filter((r) => {
+        const d = new Date(r.added_date)
+        return d >= startDate && d <= endDate
+      })
+      .map((r) => mapReading(r, fanState, heaterState))
+
+    return NextResponse.json(mapped)
+  } catch (err: any) {
+    return NextResponse.json(
+      { error: err.message || "Failed to fetch sensor data" },
+      { status: 500 },
+    )
+  }
 }
 
 export async function POST(request: NextRequest) {
   const auth = authenticateRequest(request)
 
   const body = await request.json()
-  const input: any = {
-    temperature: body.temperature,
-    humidity: body.humidity,
-    air_quality: body.air_quality,
-    fan_status: body.fan_status ?? false,
-    house_id: body.house_id || null,
+
+  try {
+    // Proxy to Express backend /insert
+    const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8081"
+    const res = await fetch(`${BACKEND_URL}/insert`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        temperature: body.temperature,
+        humidity: body.humidity,
+        airQuality: body.air_quality ?? body.airQuality,
+      }),
+    })
+    if (!res.ok) throw new Error("Backend rejected the reading")
+    const data = await res.json()
+    return NextResponse.json(data, { status: 201 })
+  } catch (err: any) {
+    return NextResponse.json(
+      { error: err.message || "Failed to save reading" },
+      { status: 500 },
+    )
   }
-
-  if (auth) input.created_by = auth.userId
-
-  const reading = await createSensorReading(input)
-  return NextResponse.json(reading, { status: 201 })
 }
 
-export async function PUT(request: NextRequest) {
-  const auth = authenticateRequest(request)
-  if (!auth) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-
-  const body = await request.json()
-  if (!body.id) return NextResponse.json({ error: "id required" }, { status: 400 })
-
-  const updates: any = { ...body }
-  delete updates.id
-
-  const reading = await updateSensorReading(body.id, updates)
-  return NextResponse.json(reading)
+// PUT and DELETE are not supported by the Express backend — return 400
+export async function PUT() {
+  return NextResponse.json({ error: "Updates not supported" }, { status: 400 })
 }
 
-export async function DELETE(request: NextRequest) {
-  const auth = authenticateRequest(request)
-  if (!auth) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-
-  const { searchParams } = new URL(request.url)
-  const id = searchParams.get("id")
-  if (!id) return NextResponse.json({ error: "id required" }, { status: 400 })
-
-  await deleteSensorReading(id)
-  return NextResponse.json({ success: true })
+export async function DELETE() {
+  return NextResponse.json({ error: "Deletes not supported" }, { status: 400 })
 }
